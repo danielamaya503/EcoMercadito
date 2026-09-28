@@ -1,0 +1,6 @@
+@EcoMercaditoAPI_HostAddress = http://localhost:5285
+
+GET {{EcoMercaditoAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

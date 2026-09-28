@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="EcoMercaditoAPI.Concretes/EcoMercaditoAPI.Concretes.csproj" />
+  <Project Path="EcoMercaditoAPI.Interfaces/EcoMercaditoAPI.Interfaces.csproj" />
+  <Project Path="EcoMercaditoAPI.Models/EcoMercaditoAPI.Models.csproj" />
+  <Project Path="EcoMercaditoAPI.Test/EcoMercaditoAPI.Test.csproj" />
+  <Project Path="EcoMercaditoAPI.ViewModels/EcoMercaditoAPI.ViewModels.csproj" />
+  <Project Path="EcoMercaditoAPI/EcoMercaditoAPI.csproj" />
+</Solution>

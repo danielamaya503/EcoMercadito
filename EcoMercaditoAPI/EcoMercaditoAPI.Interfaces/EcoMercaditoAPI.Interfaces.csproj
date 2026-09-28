@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Usuaio\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EcoMercaditoAPI.Models\EcoMercaditoAPI.Models.csproj" />
+    <ProjectReference Include="..\EcoMercaditoAPI.ViewModels\EcoMercaditoAPI.ViewModels.csproj" />
+  </ItemGroup>
+
+</Project>
