@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace EcoMercaditoAPI.Helpers
+namespace EcoMercaditoAPI.ViewModels.Helpers
 {
     /// <summary>
     /// Métodos de extensión para facilitar la paginación de consultas.

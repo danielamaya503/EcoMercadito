@@ -1,6 +1,6 @@
-﻿using EcoMercaditoAPI.Helpers;
-using EcoMercaditoAPI.Models.EcoMercadito;
+﻿using EcoMercaditoAPI.Models.EcoMercadito;
 using EcoMercaditoAPI.ViewModels.EcoMercadito.Request;
+using EcoMercaditoAPI.ViewModels.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Text;

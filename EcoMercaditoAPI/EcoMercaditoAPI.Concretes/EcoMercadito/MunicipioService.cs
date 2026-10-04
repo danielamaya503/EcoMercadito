@@ -1,8 +1,8 @@
 ﻿using EcoMercaditoAPI.Concretes.Context;
-using EcoMercaditoAPI.Helpers;
 using EcoMercaditoAPI.Interfaces.EcoMercadito;
 using EcoMercaditoAPI.Models.EcoMercadito;
 using EcoMercaditoAPI.ViewModels.EcoMercadito.Request;
+using EcoMercaditoAPI.ViewModels.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
