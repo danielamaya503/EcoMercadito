@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.AspNetCore.Http;
 
-namespace EcoMercaditoAPI.Helpers
+namespace EcoMercaditoAPI.ViewModels.Helpers
 {
     /// <summary>
     /// Representa una respuesta estándar de la API.

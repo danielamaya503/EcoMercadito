@@ -1,6 +1,8 @@
 using EcoMercaditoAPI.Concretes.Context;
 using EcoMercaditoAPI.Concretes.EcoMercadito;
+using EcoMercaditoAPI.Concretes.Usuario;
 using EcoMercaditoAPI.Interfaces.EcoMercadito;
+using EcoMercaditoAPI.Interfaces.Usuaio;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -22,6 +24,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 builder.Services.AddScoped<IMunicipioService, MunicipioService>();
+builder.Services.AddScoped<IAuthentificacion, AuthentificacionService>();
 
 // ==================== CORS ====================
 builder.Services.AddCors(options =>

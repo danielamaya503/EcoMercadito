@@ -1,6 +1,7 @@
 ﻿using EcoMercaditoAPI.Interfaces.EcoMercadito;
 using EcoMercaditoAPI.Models.EcoMercadito;
 using EcoMercaditoAPI.ViewModels.EcoMercadito.Request;
+using EcoMercaditoAPI.ViewModels.Helpers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

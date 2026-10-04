@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EcoMercaditoAPI.Helpers
+namespace EcoMercaditoAPI.ViewModels.Helpers
 {
     public class HttpResult<T>
     {

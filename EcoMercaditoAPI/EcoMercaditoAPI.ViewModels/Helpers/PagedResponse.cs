@@ -1,4 +1,4 @@
-﻿namespace EcoMercaditoAPI.Helpers
+﻿namespace EcoMercaditoAPI.ViewModels.Helpers
 {
     /// <summary>
     /// Representa una respuesta paginada estándar.
