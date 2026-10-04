@@ -25,6 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IMunicipioService, MunicipioService>();
 builder.Services.AddScoped<IAuthentificacion, AuthentificacionService>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 
 // ==================== CORS ====================
 builder.Services.AddCors(options =>

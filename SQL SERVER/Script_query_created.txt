@@ -1,0 +1,523 @@
+-- ============================================================================
+-- EcoMercadito SV - Base de datos para SQL Server
+-- ============================================================================
+
+USE [master];
+GO
+
+-- Crear base de datos
+IF NOT EXISTS
+    (SELECT [name] 
+        FROM sys.databases 
+        WHERE [name] = N'EcoMercaditoSV'
+    )
+BEGIN
+    CREATE DATABASE [EcoMercaditoSV];
+END
+GO
+
+USE [EcoMercaditoSV];
+GO
+
+-- ============================================================================
+-- TABLAS DE CATÁLOGO
+-- ============================================================================
+
+-- Tabla: Departamento (14 departamentos de El Salvador)
+CREATE TABLE [Departamento] (
+    [DepartamentoId] INT IDENTITY(1,1) NOT NULL,
+    [Nombre] NVARCHAR(100) NOT NULL,
+    CONSTRAINT [PK_Departamento] PRIMARY KEY CLUSTERED ([DepartamentoId]),
+    CONSTRAINT [UQ_Departamento_Nombre] UNIQUE NONCLUSTERED ([Nombre])
+);
+GO
+
+-- Tabla: Municipio (262 municipios, depende de Departamento)
+CREATE TABLE [Municipio] (
+    [MunicipioId] INT IDENTITY(1,1) NOT NULL,
+    [DepartamentoId] INT NOT NULL,
+    [Nombre] NVARCHAR(150) NOT NULL,
+    CONSTRAINT [PK_Municipio] PRIMARY KEY CLUSTERED ([MunicipioId]),
+    CONSTRAINT [FK_Municipio_Departamento] FOREIGN KEY ([DepartamentoId]) 
+        REFERENCES [Departamento]([DepartamentoId]) ON DELETE NO ACTION,
+    CONSTRAINT [UQ_Municipio_Nombre_Por_Depto] UNIQUE NONCLUSTERED ([DepartamentoId], [Nombre])
+);
+GO
+
+-- Tabla: Rol (Comprador, Comercio, Administrador)
+CREATE TABLE [Rol] (
+    [RolId] INT IDENTITY(1,1) NOT NULL,
+    [NombreRol] NVARCHAR(50) NOT NULL,
+    CONSTRAINT [PK_Rol] PRIMARY KEY CLUSTERED ([RolId]),
+    CONSTRAINT [UQ_Rol_NombreRol] UNIQUE NONCLUSTERED ([NombreRol])
+);
+GO
+
+-- Tabla: Categoria (catálogo de categorías de productos)
+CREATE TABLE [Categoria] (
+    [CategoriaId] INT IDENTITY(1,1) NOT NULL,
+    [NombreCategoria] NVARCHAR(100) NOT NULL,
+    [IconoClase] NVARCHAR(100) NULL,
+    [Estado] BIT NOT NULL DEFAULT 1,
+    CONSTRAINT [PK_Categoria] PRIMARY KEY CLUSTERED ([CategoriaId]),
+    CONSTRAINT [UQ_Categoria_NombreCategoria] UNIQUE NONCLUSTERED ([NombreCategoria])
+);
+GO
+
+-- ============================================================================
+-- TABLAS PRINCIPALES
+-- ============================================================================
+
+-- Tabla: Usuario (identidad y autenticación)
+CREATE TABLE [Usuario] (
+    [UsuarioId] INT IDENTITY(1,1) NOT NULL,
+    [Nombre] NVARCHAR(150) NOT NULL,
+    [Email] NVARCHAR(255) NOT NULL,
+    [Telefono] NVARCHAR(20) NULL,
+    [MunicipioId] INT NOT NULL,
+    [RolId] INT NOT NULL,
+    [Estado] NVARCHAR(20) NOT NULL DEFAULT N'Activo',
+    [FechaRegistro] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    [FechaBaneo] DATETIME2(0) NULL,
+    CONSTRAINT [PK_Usuario] PRIMARY KEY CLUSTERED ([UsuarioId]),
+    CONSTRAINT [FK_Usuario_Municipio] FOREIGN KEY ([MunicipioId]) 
+        REFERENCES [Municipio]([MunicipioId]) ON DELETE NO ACTION,
+    CONSTRAINT [FK_Usuario_Rol] FOREIGN KEY ([RolId]) 
+        REFERENCES [Rol]([RolId]) ON DELETE NO ACTION,
+    CONSTRAINT [UQ_Usuario_Email] UNIQUE NONCLUSTERED ([Email]),
+    CONSTRAINT [CHK_Usuario_Estado] CHECK ([Estado] IN (N'Activo', N'Inactivo', N'Suspendido'))
+);
+GO
+
+-- Índice non-clustered para búsquedas por email (login)
+CREATE NONCLUSTERED INDEX [IX_Usuario_Email] ON [Usuario] ([Email]) INCLUDE ([Nombre], [RolId], [Estado]);
+GO
+
+-- Índice para filtrar usuarios por rol y estado
+CREATE NONCLUSTERED INDEX [IX_Usuario_Rol_Estado] ON [Usuario] ([RolId], [Estado]) INCLUDE ([UsuarioId], [Nombre], [Email]);
+GO
+
+-- Tabla: Credencial (almacena hash BCrypt)
+CREATE TABLE [Credencial] (
+    [CredencialId] INT IDENTITY(1,1) NOT NULL,
+    [UsuarioId] INT NOT NULL,
+    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [ProveedorAuth] NVARCHAR(20) NOT NULL DEFAULT N'Local',
+    [ProveedorUserId] NVARCHAR(255) NULL,
+    [FechaActualizacion] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT [PK_Credencial] PRIMARY KEY CLUSTERED ([CredencialId]),
+    CONSTRAINT [FK_Credencial_Usuario] FOREIGN KEY ([UsuarioId]) 
+        REFERENCES [Usuario]([UsuarioId]) ON DELETE CASCADE,
+    CONSTRAINT [UQ_Credencial_UsuarioId] UNIQUE NONCLUSTERED ([UsuarioId]),
+    CONSTRAINT [CHK_Credencial_ProveedorAuth] CHECK ([ProveedorAuth] IN (N'Local', N'Google', N'Apple'))
+);
+GO
+
+-- Tabla: Negocio (datos del comercio)
+CREATE TABLE [Negocio] (
+    [NegocioId] INT IDENTITY(1,1) NOT NULL,
+    [UsuarioId] INT NOT NULL,
+    [NombreComercial] NVARCHAR(200) NOT NULL,
+    [Descripcion] NVARCHAR(1000) NULL,
+    [MunicipioId] INT NOT NULL,
+    [Estado] NVARCHAR(20) NOT NULL DEFAULT N'Activo',
+    [FechaCreacion] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT [PK_Negocio] PRIMARY KEY CLUSTERED ([NegocioId]),
+    CONSTRAINT [FK_Negocio_Usuario] FOREIGN KEY ([UsuarioId]) 
+        REFERENCES [Usuario]([UsuarioId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_Negocio_Municipio] FOREIGN KEY ([MunicipioId]) 
+        REFERENCES [Municipio]([MunicipioId]) ON DELETE NO ACTION,
+    CONSTRAINT [UQ_Negocio_UsuarioId] UNIQUE NONCLUSTERED ([UsuarioId]),
+    CONSTRAINT [CHK_Negocio_Estado] CHECK ([Estado] IN (N'Activo', N'Inactivo'))
+);
+GO
+
+-- Índice para búsquedas de negocios por municipio
+CREATE NONCLUSTERED INDEX [IX_Negocio_Municipio_Estado] ON [Negocio] ([MunicipioId], [Estado]) INCLUDE ([NegocioId], [NombreComercial]);
+GO
+
+-- Tabla: OfertaExcedente (publicaciones de productos)
+CREATE TABLE [OfertaExcedente] (
+    [OfertaId] INT IDENTITY(1,1) NOT NULL,
+    [NegocioId] INT NOT NULL,
+    [CategoriaId] INT NOT NULL,
+    [Titulo] NVARCHAR(150) NOT NULL,
+    [PrecioOriginal] DECIMAL(10,2) NOT NULL,
+    [PrecioDescuento] DECIMAL(10,2) NOT NULL,
+    [CantidadDisponible] INT NOT NULL,
+    [FechaLimite] DATE NOT NULL,
+    [Disponible] BIT NOT NULL DEFAULT 1,
+    [FechaCreacion] DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT [PK_OfertaExcedente] PRIMARY KEY CLUSTERED ([OfertaId]),
+    CONSTRAINT [FK_OfertaExcedente_Negocio] FOREIGN KEY ([NegocioId]) 
+        REFERENCES [Negocio]([NegocioId]) ON DELETE CASCADE,
+    CONSTRAINT [FK_OfertaExcedente_Categoria] FOREIGN KEY ([CategoriaId]) 
+        REFERENCES [Categoria]([CategoriaId]) ON DELETE NO ACTION,
+    CONSTRAINT [CHK_OfertaExcedente_Precios] CHECK ([PrecioDescuento] <= [PrecioOriginal]),
+    CONSTRAINT [CHK_OfertaExcedente_Cantidad] CHECK ([CantidadDisponible] >= 0)
+);
+GO
+
+-- Índice para filtrar ofertas disponibles por categoría y fecha límite
+CREATE NONCLUSTERED INDEX [IX_OfertaExcedente_Disponible_Categoria_Fecha] 
+    ON [OfertaExcedente] ([Disponible], [CategoriaId], [FechaLimite]) 
+    INCLUDE ([OfertaId], [NegocioId], [Titulo], [PrecioDescuento], [CantidadDisponible]);
+GO
+
+-- Índice para búsquedas por negocio
+CREATE NONCLUSTERED INDEX [IX_OfertaExcedente_Negocio] ON [OfertaExcedente] ([NegocioId]) INCLUDE ([OfertaId], [Titulo], [Disponible]);
+GO
+
+-- ============================================================================
+-- DATOS - CATÁLOGOS
+-- ============================================================================
+
+-- Insertar roles
+INSERT INTO [Rol] ([NombreRol]) VALUES 
+    (N'Comprador'),
+    (N'Comercio'),
+    (N'Administrador');
+GO
+
+-- Insertar categorías comunes para excedentes de alimentos
+INSERT INTO [Categoria] ([NombreCategoria], [IconoClase], [Estado]) VALUES
+    (N'Frutas', N'fa-apple-alt', 1),
+    (N'Verduras', N'fa-carrot', 1),
+    (N'Lácteos', N'fa-cheese', 1),
+    (N'Panadería', N'fa-bread-slice', 1),
+    (N'Carnes', N'fa-drumstick-bite', 1),
+    (N'Pescados', N'fa-fish', 1),
+    (N'Granos', N'fa-seedling', 1),
+    (N'Bebidas', N'fa-wine-bottle', 1),
+    (N'Preparados', N'fa-utensils', 1),
+    (N'Dulces', N'fa-cookie', 1);
+GO
+
+-- Insertar departamentos de El Salvador (14)
+INSERT INTO [Departamento] ([Nombre]) VALUES
+    (N'Ahuachapan'),
+    (N'Santa Ana'),
+    (N'Sonsonate'),
+    (N'Chalatenango'),
+    (N'La Libertad'),
+    (N'San Salvador'),
+    (N'Cuscatlan'),
+    (N'La Paz'),
+    (N'Cabañas'),
+    (N'San Vicente'),
+    (N'Usulutan'),
+    (N'San Miguel'),
+    (N'Morazan'),
+    (N'La Union');
+GO
+
+-- Insertar municipios por departamento (262 municipios)
+-- Ahuachapán (12)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (1, N'Ahuachapán'), (1, N'Apaneca'), (1, N'Atiquizaya'), (1, N'Concepción de Ataco'),
+    (1, N'El Refugio'), (1, N'Guaymango'), (1, N'Jujutla'), (1, N'San Francisco Menéndez'),
+    (1, N'San Lorenzo'), (1, N'San Pedro Puxtla'), (1, N'Tacuba'), (1, N'Turín');
+
+-- Santa Ana (13)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (2, N'Candelaria de la Frontera'), (2, N'Coatepeque'), (2, N'Chalchuapa'), (2, N'El Congo'),
+    (2, N'El Porvenir'), (2, N'Masahuat'), (2, N'Metapán'), (2, N'San Antonio Pajonal'),
+    (2, N'San Sebastián Salitrillo'), (2, N'Santa Ana'), (2, N'Santa Rosa Guachipilín'),
+    (2, N'Santiago de la Frontera'), (2, N'Texistepeque');
+
+-- Sonsonate (16)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (3, N'Acajutla'), (3, N'Armenia'), (3, N'Caluco'), (3, N'Cuisnahuat'),
+    (3, N'Santa Isabel Ishuatán'), (3, N'Izalco'), (3, N'Juayúa'), (3, N'Nahuizalco'),
+    (3, N'Nahulingo'), (3, N'Salcoatitán'), (3, N'San Antonio del Monte'), (3, N'San Julián'),
+    (3, N'San Pedro Nonualco'), (3, N'Sonsonate'), (3, N'Tepepan'), (3, N'Zaragoza');
+
+-- Chalatenango (33)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (4, N'Agua Caliente'), (4, N'Arcatao'), (4, N'Azacualpa'), (4, N'Cancasque'), (4, N'Chalatenango'),
+    (4, N'Citalá'), (4, N'Comalapa'), (4, N'Concepción Quezaltepeque'), (4, N'Dulce Nombre de María'),
+    (4, N'El Carrizal'), (4, N'El Paraíso'), (4, N'La Laguna'), (4, N'La Palma'), (4, N'La Reina'),
+    (4, N'Las Flores'), (4, N'Las Vueltas'), (4, N'Nombre de Jesús'), (4, N'Nueva Concepción'),
+    (4, N'Nueva Trinidad'), (4, N'Ojos de Agua'), (4, N'Potonico'), (4, N'San Antonio de la Cruz'),
+    (4, N'San Antonio Los Ranchos'), (4, N'San Fernando'), (4, N'San Francisco Lempa'),
+    (4, N'San Francisco Morazán'), (4, N'San Ignacio'), (4, N'San Isidro Labrador'),
+    (4, N'San Luis del Carmen'), (4, N'San Miguel de Mercedes'), (4, N'San Rafael'),
+    (4, N'Santa Rita'), (4, N'Tejutla');
+
+-- La Libertad (22)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (5, N'Santa Tecla'), (5, N'Antiguo Cuscatlán'), (5, N'Chiltiupán'), (5, N'Ciudad Arce'),
+    (5, N'Colón'), (5, N'Comasagua'), (5, N'Huizúcar'), (5, N'Jayaque'), (5, N'Jicalapa'),
+    (5, N'La Libertad'), (5, N'Nuevo Cuscatlán'), (5, N'Quezaltepeque'), (5, N'San Juan Opico'),
+    (5, N'Sacacoyo'), (5, N'San José Villanueva'), (5, N'San Matías'), (5, N'San Pablo Tacachico'),
+    (5, N'Talnique'), (5, N'Tamanique'), (5, N'Teotepeque'), (5, N'Tepeccoyo'), (5, N'Zaragoza');
+
+-- San Salvador (19)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (6, N'San Salvador'), (6, N'Aguilares'), (6, N'Apopa'), (6, N'Ayutuxtepeque'),
+    (6, N'Cuscatancingo'), (6, N'Ciudad Delgado'), (6, N'El Paisnal'), (6, N'Guazapa'),
+    (6, N'Ilopango'), (6, N'Mejicanos'), (6, N'Nejapa'), (6, N'Panchimalco'),
+    (6, N'Rosario de Mora'), (6, N'San Marcos'), (6, N'San Martín'), (6, N'Santiago Texacuangos'),
+    (6, N'Santo Tomás'), (6, N'Soyapango'), (6, N'Tonacatepeque');
+
+-- Cuscatlán (16)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (7, N'Cojutepeque'), (7, N'Candelaria'), (7, N'El Carmen'), (7, N'El Rosario'),
+    (7, N'Monte San Juan'), (7, N'Oratorio de Concepción'), (7, N'San Bartolomé Perulapán'),
+    (7, N'San Cristóbal'), (7, N'San José Guayabal'), (7, N'San Pedro Perulapán'),
+    (7, N'San Rafael Cedros'), (7, N'San Ramón'), (7, N'Santa Cruz Analquito'),
+    (7, N'Santa Cruz Michapa'), (7, N'Suchitoto'), (7, N'Tenancingo');
+
+-- La Paz (22)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (8, N'Zacatecoluca'), (8, N'Cuyultitán'), (8, N'El Rosario'), (8, N'Jerusalén'),
+    (8, N'Mercedes La Ceiba'), (8, N'Olocuilta'), (8, N'Paraíso de Osorio'), (8, N'San Antonio Masahuat'),
+    (8, N'San Emigdio'), (8, N'San Francisco Chinameca'), (8, N'San Pedro Masahuat'),
+    (8, N'San Juan Nonualco'), (8, N'San Juan Talpa'), (8, N'San Juan Tepezontes'),
+    (8, N'San Luis La Herradura'), (8, N'San Luis Talpa'), (8, N'San Miguel Tepezontes'),
+    (8, N'San Pedro Nonualco'), (8, N'San Rafael Obrajuelo'), (8, N'Santa María Ostuma'),
+    (8, N'Santiago Nonualco'), (8, N'Tapalhuaca');
+
+-- Cabañas (9)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (9, N'Sensuntepeque'), (9, N'Cinquera'), (9, N'Dolores'), (9, N'Guacotecti'),
+    (9, N'Ilobasco'), (9, N'Jutiapa'), (9, N'San Isidro'), (9, N'Tejutepeque'), (9, N'Victoria');
+
+-- San Vicente (13)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (10, N'San Vicente'), (10, N'Apastepeque'), (10, N'Guadalupe'), (10, N'San Cayetano Istepeque'),
+    (10, N'San Esteban Catarina'), (10, N'San Ildefonso'), (10, N'San Lorenzo'), (10, N'San Sebastián'),
+    (10, N'Santa Clara'), (10, N'Santo Domingo'), (10, N'Tecoluca'), (10, N'Tepetitán'), (10, N'Verapaz');
+
+-- Usulután (23)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (11, N'Usulután'), (11, N'Alegría'), (11, N'Berlín'), (11, N'California'), (11, N'Concepción Batres'),
+    (11, N'El Triunfo'), (11, N'Ereguayquín'), (11, N'Estanzuelas'), (11, N'Jiquilisco'),
+    (11, N'Jucuapa'), (11, N'Jucuarán'), (11, N'Mercedes Umaña'), (11, N'Nueva Granada'),
+    (11, N'Ozatlán'), (11, N'Puerto El Triunfo'), (11, N'San Agustín'), (11, N'San Buenaventura'),
+    (11, N'San Dionisio'), (11, N'San Francisco Javier'), (11, N'Santa Elena'), (11, N'Santa María'),
+    (11, N'Santiago de María'), (11, N'Tecapán');
+
+-- San Miguel (20)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (12, N'San Miguel'), (12, N'Carolina'), (12, N'Chapeltique'), (12, N'Chinameca'),
+    (12, N'Chirilagua'), (12, N'Ciudad Barrios'), (12, N'Comacarán'), (12, N'El Tránsito'),
+    (12, N'Lolotique'), (12, N'Moncagua'), (12, N'Nueva Guadalupe'), (12, N'Nuevo Edén de San Juan'),
+    (12, N'Quelepa'), (12, N'San Antonio'), (12, N'San Gerardo'), (12, N'San Jorge'),
+    (12, N'San Luis de la Reina'), (12, N'San Rafael Oriente'), (12, N'Sesori'), (12, N'Uluazapa');
+
+-- Morazán (26)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (13, N'Gotera'), (13, N'Arambala'), (13, N'Cacaopera'), (13, N'Chilanga'), (13, N'Corinto'),
+    (13, N'Delicias de Concepción'), (13, N'El Divisadero'), (13, N'El Rosario'), (13, N'Gualococti'),
+    (13, N'Guatajiagua'), (13, N'Joateca'), (13, N'Jocoaitique'), (13, N'Jocoro'),
+    (13, N'Lolotiquillo'), (13, N'Meanguera'), (13, N'Osicala'), (13, N'Perquín'), (13, N'San Carlos'),
+    (13, N'San Fernando'), (13, N'San Isidro'), (13, N'San Simón'), (13, N'Sensembra'),
+    (13, N'Sociedad'), (13, N'Torola'), (13, N'Yamabal'), (13, N'Yoloaiquín');
+
+-- La Unión (18)
+INSERT INTO [Municipio] ([DepartamentoId], [Nombre]) VALUES
+    (14, N'La Unión'), (14, N'Anamorós'), (14, N'Bolívar'), (14, N'Concepción de Oriente'),
+    (14, N'Conchagua'), (14, N'El Carmen'), (14, N'El Sauce'), (14, N'Intipucá'),
+    (14, N'Lislique'), (14, N'Meanguera del Golfo'), (14, N'Nueva Esparta'), (14, N'Pasaquina'),
+    (14, N'Polorós'), (14, N'San Alejo'), (14, N'San José'), (14, N'Santa Rosa de Lima'),
+    (14, N'Yayantique'), (14, N'Yucuaiquín');
+GO
+
+-- ============================================================================
+-- VISTAS
+-- ============================================================================
+
+-- Vista: Listado de usuarios con rol y ubicación
+CREATE OR ALTER VIEW [vw_Usuario_Completo] AS
+SELECT 
+    u.[UsuarioId],
+    u.[Nombre],
+    u.[Email],
+    u.[Telefono],
+    m.[Nombre] AS [Municipio],
+    d.[Nombre] AS [Departamento],
+    r.[NombreRol] AS [Rol],
+    u.[Estado],
+    u.[FechaRegistro]
+FROM [Usuario] u
+INNER JOIN [Municipio] m ON u.[MunicipioId] = m.[MunicipioId]
+INNER JOIN [Departamento] d ON m.[DepartamentoId] = d.[DepartamentoId]
+INNER JOIN [Rol] r ON u.[RolId] = r.[RolId];
+GO
+
+-- Vista: Ofertas activas con datos completos
+CREATE OR ALTER VIEW [vw_Oferta_Completa] AS
+SELECT 
+    o.[OfertaId],
+    o.[Titulo],
+    o.[PrecioOriginal],
+    o.[PrecioDescuento],
+    o.[CantidadDisponible],
+    o.[FechaLimite],
+    o.[Disponible],
+    c.[NombreCategoria],
+    n.[NombreComercial],
+    us.[Nombre] AS [NombreContacto],
+    us.[Telefono] AS [TelefonoContacto],
+    m.[Nombre] AS [Municipio],
+    d.[Nombre] AS [Departamento]
+FROM [OfertaExcedente] o
+INNER JOIN [Negocio] n ON o.[NegocioId] = n.[NegocioId]
+INNER JOIN [Usuario] us ON n.[UsuarioId] = us.[UsuarioId]
+INNER JOIN [Categoria] c ON o.[CategoriaId] = c.[CategoriaId]
+INNER JOIN [Municipio] m ON n.[MunicipioId] = m.[MunicipioId]
+INNER JOIN [Departamento] d ON m.[DepartamentoId] = d.[DepartamentoId]
+WHERE o.[Disponible] = 1 AND o.[FechaLimite] >= CAST(SYSDATETIME() AS DATE);
+GO
+
+-- ============================================================================
+-- STORED PROCEDURES BÁSICOS
+-- ============================================================================
+
+-- SP: Registrar nuevo usuario
+CREATE OR ALTER PROCEDURE [sp_Usuario_Insertar]
+    @Nombre NVARCHAR(150),
+    @Email NVARCHAR(255),
+    @Telefono NVARCHAR(20),
+    @MunicipioId INT,
+    @RolId INT,
+    @PasswordHash NVARCHAR(255),
+    @UsuarioId INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Insertar usuario
+        INSERT INTO [Usuario] ([Nombre], [Email], [Telefono], [MunicipioId], [RolId])
+        VALUES (@Nombre, @Email, @Telefono, @MunicipioId, @RolId);
+        
+        SET @UsuarioId = SCOPE_IDENTITY();
+        
+        -- Insertar credencial
+        INSERT INTO [Credencial] ([UsuarioId], [PasswordHash])
+        VALUES (@UsuarioId, @PasswordHash);
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        
+        RAISERROR (@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END
+GO
+
+-- SP: Autenticar usuario (login)
+CREATE OR ALTER PROCEDURE [sp_Usuario_Autenticar]
+    @Email NVARCHAR(255),
+    @PasswordHash NVARCHAR(255)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        u.[UsuarioId],
+        u.[Nombre],
+        u.[Email],
+        u.[Telefono],
+        u.[MunicipioId],
+        u.[RolId],
+        r.[NombreRol] AS [Rol],
+        u.[Estado]
+    FROM [Usuario] u
+    INNER JOIN [Credencial] c ON u.[UsuarioId] = c.[UsuarioId]
+    INNER JOIN [Rol] r ON u.[RolId] = r.[RolId]
+    WHERE u.[Email] = @Email 
+      AND c.[PasswordHash] = @PasswordHash
+      AND u.[Estado] = N'Activo'
+      AND c.[ProveedorAuth] = N'Local';
+END
+GO
+
+-- SP: Insertar nueva oferta
+CREATE OR ALTER PROCEDURE [sp_Oferta_Insertar]
+    @NegocioId INT,
+    @CategoriaId INT,
+    @Titulo NVARCHAR(150),
+    @PrecioOriginal DECIMAL(10,2),
+    @PrecioDescuento DECIMAL(10,2),
+    @CantidadDisponible INT,
+    @FechaLimite DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Validar que el negocio exista y esté activo
+        IF NOT EXISTS (SELECT 1 FROM [Negocio] WHERE [NegocioId] = @NegocioId AND [Estado] = N'Activo')
+        BEGIN
+            RAISERROR (N'El negocio no existe o está inactivo.', 16, 1);
+            RETURN;
+        END
+        
+        -- Validar que la categoría exista y esté activa
+        IF NOT EXISTS (SELECT 1 FROM [Categoria] WHERE [CategoriaId] = @CategoriaId AND [Estado] = 1)
+        BEGIN
+            RAISERROR (N'La categoría no existe o está inactiva.', 16, 1);
+            RETURN;
+        END
+        
+        -- Validar que el precio de descuento no sea mayor al original
+        IF @PrecioDescuento > @PrecioOriginal
+        BEGIN
+            RAISERROR (N'El precio de descuento no puede ser mayor al precio original.', 16, 1);
+            RETURN;
+        END
+        
+        -- Validar cantidad
+        IF @CantidadDisponible < 0
+        BEGIN
+            RAISERROR (N'La cantidad disponible no puede ser negativa.', 16, 1);
+            RETURN;
+        END
+        
+        INSERT INTO [OfertaExcedente] 
+            ([NegocioId], [CategoriaId], [Titulo], [PrecioOriginal], [PrecioDescuento], 
+             [CantidadDisponible], [FechaLimite])
+        VALUES 
+            (@NegocioId, @CategoriaId, @Titulo, @PrecioOriginal, @PrecioDescuento, 
+             @CantidadDisponible, @FechaLimite);
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        
+        RAISERROR (@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END
+GO
+
+-- ============================================================================
+-- TRIGGER: Actualizar estado de oferta cuando se agota
+-- ============================================================================
+
+CREATE OR ALTER TRIGGER [trg_OfertaExcedente_ActualizarDisponible]
+ON [OfertaExcedente]
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Si la cantidad disponible llega a 0, marcar como no disponible automáticamente
+    UPDATE o
+    SET [Disponible] = 0
+    FROM [OfertaExcedente] o
+    INNER JOIN inserted i ON o.[OfertaId] = i.[OfertaId]
+    WHERE i.[CantidadDisponible] = 0 AND i.[Disponible] = 1;
+END
+GO
