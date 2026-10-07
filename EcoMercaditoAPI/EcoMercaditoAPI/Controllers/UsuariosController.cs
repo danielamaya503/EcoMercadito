@@ -71,7 +71,6 @@ namespace EcoMercaditoAPI.Controllers
 
         /// <summary>
         /// Crea un nuevo usuario.
-        /// Solo administradores.
         /// </summary>
         [HttpPost]
         [ProducesResponseType(typeof(ApiResponse<UsuarioResponse>), StatusCodes.Status201Created)]
@@ -79,17 +78,8 @@ namespace EcoMercaditoAPI.Controllers
         [ProducesResponseType(typeof(ApiResponse<UsuarioResponse>), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ApiResponse<UsuarioResponse>), StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<ApiResponse<UsuarioResponse>>> Create(
-            [FromHeader(Name = "X-Usuario-Id")] int usuarioLogueadoId,
             [FromBody] CreateUsuarioRequest request)
         {
-            if (usuarioLogueadoId <= 0)
-            {
-                return BadRequest(ApiResponse<UsuarioResponse>.CreateError(
-                    "Usuario no autenticado",
-                    new List<string> { "El header X-Usuario-Id es requerido" }
-                ));
-            }
-
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values
@@ -103,7 +93,7 @@ namespace EcoMercaditoAPI.Controllers
                 ));
             }
 
-            var result = await _usuarioService.CreateAsync(request, usuarioLogueadoId);
+            var result = await _usuarioService.CreateAsync(request);
             return result.Success ? CreatedAtAction(nameof(GetById), new { id = result.Data.UsuarioId }, result) : StatusCode(result.StatusCode, result);
         }
 

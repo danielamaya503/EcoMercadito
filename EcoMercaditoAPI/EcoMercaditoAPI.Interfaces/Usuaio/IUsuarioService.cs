@@ -34,7 +34,7 @@ public interface IUsuarioService
     /// <param name="usuarioLogueadoId">ID del usuario que realiza la operación (debe ser administrador).</param>
     /// <param name="cancellationToken">Token de cancelación.</param>
     /// <returns>Datos del usuario creado.</returns>
-    Task<ApiResponse<UsuarioResponse>> CreateAsync(CreateUsuarioRequest request, int usuarioLogueadoId, CancellationToken cancellationToken = default);
+    Task<ApiResponse<UsuarioResponse>> CreateAsync(CreateUsuarioRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Edita un usuario existente.

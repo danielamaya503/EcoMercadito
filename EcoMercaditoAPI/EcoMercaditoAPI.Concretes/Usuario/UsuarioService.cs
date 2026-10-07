@@ -124,30 +124,10 @@ public class UsuarioService: IUsuarioService
         }
     }
 
-    public async Task<ApiResponse<UsuarioResponse>> CreateAsync(CreateUsuarioRequest request, int usuarioLogueadoId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<UsuarioResponse>> CreateAsync(CreateUsuarioRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
-            var usuarioLogueado = await _context.Usuarios.FindAsync(new object[] { usuarioLogueadoId }, cancellationToken);
-           
-            if (usuarioLogueado == null)
-            {
-                return ApiResponse<UsuarioResponse>.CreateError(
-                    "Usuario no autenticado",
-                    new List<string> { "No se pudo identificar al usuario" },
-                    StatusCodes.Status401Unauthorized
-                );
-            }
-
-            if (usuarioLogueado.RolId != 3)
-            {
-                return ApiResponse<UsuarioResponse>.CreateError(
-                    "Permisos insuficientes",
-                    new List<string> { "Solo administradores pueden crear usuarios" },
-                    StatusCodes.Status403Forbidden
-                );
-            }
-
             var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email == request.Email, cancellationToken);
             
             if (emailExiste)
@@ -214,6 +194,7 @@ public class UsuarioService: IUsuarioService
                 Email = nuevoUsuario.Email,
                 Telefono = nuevoUsuario.Telefono,
                 MunicipioId = nuevoUsuario.MunicipioId,
+                MunicipioNombre = nuevoUsuario.Municipio!.Nombre,
                 RolId = nuevoUsuario.RolId,
                 NombreRol = request.RolId == 1 ? "Comprador" : request.RolId == 2 ? "Comercio" : "Administrador",
                 Estado = nuevoUsuario.Estado,
