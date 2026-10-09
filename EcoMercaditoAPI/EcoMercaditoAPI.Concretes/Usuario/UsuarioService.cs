@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Data.SqlClient;
 
 namespace EcoMercaditoAPI.Concretes.Usuario;
 
@@ -128,7 +129,11 @@ public class UsuarioService: IUsuarioService
     {
         try
         {
-            var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email == request.Email, cancellationToken);
+            var email = request.Email.Trim().ToLowerInvariant();
+            
+            var emailExiste = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.Email.ToLower() == email, cancellationToken);
             
             if (emailExiste)
             {
@@ -139,43 +144,46 @@ public class UsuarioService: IUsuarioService
                 );
             }
 
-            var municipioExiste = await _context.Municipios.AnyAsync(m => m.MunicipioId == request.MunicipioId, cancellationToken);
+            var municipioExiste = await _context.Municipios
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.MunicipioId == request.MunicipioId, cancellationToken);
            
-            if (!municipioExiste)
+            if (municipioExiste is null)
             {
                 return ApiResponse<UsuarioResponse>.CreateError(
                     "Municipio inválido",
-                    new List<string> { "El municipio no existe" },
-                    StatusCodes.Status400BadRequest
-                );
+                    ["El municipio no existe"],
+                    StatusCodes.Status400BadRequest);
             }
 
-            var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == request.RolId, cancellationToken);
+            var rolExiste = await _context.Roles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.RolId == request.RolId, cancellationToken);
             
-            if (!rolExiste)
+            if (rolExiste is null)
             {
                 return ApiResponse<UsuarioResponse>.CreateError(
                     "Rol inválido",
-                    new List<string> { "El rol no existe" },
-                    StatusCodes.Status400BadRequest
-                );
+                    ["El rol no existe"],
+                    StatusCodes.Status400BadRequest);
             }
 
             var nuevoUsuario = new EcoMercaditoAPI.Models.Usuarios.Usuario
             {
-                Nombre = request.Nombre,
-                Email = request.Email,
-                Telefono = request.Telefono,
-                MunicipioId = request.MunicipioId,
-                RolId = request.RolId,
+                Nombre = request.Nombre.Trim(),
+                Email = email,
+                Telefono = string.IsNullOrWhiteSpace(request.Telefono)
+                    ? null
+                    : request.Telefono.Trim(),                
+                MunicipioId = municipioExiste.MunicipioId,
+                RolId = rolExiste.RolId,
                 Estado = "Activo",
                 FechaRegistro = DateTime.Now
             };
-
+            
             _context.Usuarios.Add(nuevoUsuario);
-
             await _context.SaveChangesAsync(cancellationToken);
-
+            
             var credencial = new Credencial
             {
                 UsuarioId = nuevoUsuario.UsuarioId,
@@ -183,9 +191,14 @@ public class UsuarioService: IUsuarioService
                 ProveedorAuth = "Local",
                 FechaActualizacion = DateTime.Now
             };
+            
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(cancellationToken);
 
             _context.Credenciales.Add(credencial);
+
             await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
             var response = new UsuarioResponse
             {
@@ -194,14 +207,25 @@ public class UsuarioService: IUsuarioService
                 Email = nuevoUsuario.Email,
                 Telefono = nuevoUsuario.Telefono,
                 MunicipioId = nuevoUsuario.MunicipioId,
-                MunicipioNombre = nuevoUsuario.Municipio!.Nombre,
+                MunicipioNombre = municipioExiste.Nombre,
                 RolId = nuevoUsuario.RolId,
-                NombreRol = request.RolId == 1 ? "Comprador" : request.RolId == 2 ? "Comercio" : "Administrador",
+                NombreRol = rolExiste.NombreRol,
                 Estado = nuevoUsuario.Estado,
                 FechaRegistro = nuevoUsuario.FechaRegistro
             };
 
             return ApiResponse<UsuarioResponse>.CreateSuccess(response, "Usuario creado exitosamente", StatusCodes.Status201Created);
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is SqlException sqlException &&
+                  (sqlException.Number == 2627 || sqlException.Number == 2601))
+        {
+            _logger.LogError(ex, "Error de base de datos al crear usuario");
+
+            return ApiResponse<UsuarioResponse>.CreateError(
+                "No se pudo crear el usuario",
+                ["Ocurrió un error al guardar la información en la base de datos."],
+                StatusCodes.Status500InternalServerError);
         }
         catch (Exception ex)
         {

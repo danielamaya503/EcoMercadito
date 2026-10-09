@@ -1,6 +1,8 @@
 ﻿using EcoMercaditoAPI.Models.EcoMercadito;
 using Microsoft.EntityFrameworkCore;
 using EcoMercaditoAPI.Models.Usuarios;
+using Microsoft.CodeAnalysis;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace EcoMercaditoAPI.Concretes.Context;
 
@@ -37,8 +39,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Departamento>(entity =>
         {
             entity.ToTable("Departamento");
-            entity.HasKey(e => e.DepartamentoId);
 
+            entity.HasKey(e => e.DepartamentoId);
+            
+            entity.Property(e => e.DepartamentoId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+            
             entity.Property(e => e.Nombre)
                 .IsRequired()
                 .HasMaxLength(100);
@@ -56,7 +64,12 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Municipio");
             entity.HasKey(e => e.MunicipioId);
-
+            
+            entity.Property(e => e.MunicipioId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+            
             entity.Property(e => e.Nombre)
                 .IsRequired()
                 .HasMaxLength(150);
@@ -84,7 +97,12 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Rol");
             entity.HasKey(e => e.RolId);
-
+            
+            entity.Property(e => e.RolId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+            
             entity.Property(e => e.NombreRol)
                 .IsRequired()
                 .HasMaxLength(50);
@@ -102,6 +120,11 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Categoria");
             entity.HasKey(e => e.CategoriaId);
+            
+            entity.Property(e => e.CategoriaId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
 
             entity.Property(e => e.NombreCategoria)
                 .IsRequired()
@@ -121,8 +144,15 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<EcoMercaditoAPI.Models.Usuarios.Usuario>(entity =>
         {
+          
             entity.ToTable("Usuario");
+
             entity.HasKey(e => e.UsuarioId);
+
+            entity.Property(e => e.UsuarioId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
 
             entity.Property(e => e.Nombre)
                 .IsRequired()
@@ -140,6 +170,13 @@ public class AppDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("Activo");
 
+            entity.Property(e => e.FechaRegistro)
+                .HasColumnType("datetime2(0)")
+                .HasDefaultValueSql("SYSDATETIME()");
+
+            entity.Property(e => e.FechaBaneo)
+                .HasColumnType("datetime2(0)");
+
             entity.HasIndex(e => e.Email)
                 .IsUnique();
 
@@ -156,23 +193,28 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Credencial)
-                .WithOne(c => c.Usuario)
-                .HasForeignKey<Credencial>(c => c.UsuarioId)
+                .WithOne(e => e.Usuario)
+                .HasForeignKey<Credencial>(e => e.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.Negocio)
-                .WithOne(n => n.Usuario)
-                .HasForeignKey<Negocio>(n => n.UsuarioId)
+                .WithOne(e => e.Usuario)
+                .HasForeignKey<Negocio>(e => e.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Check constraint para Estado
-            entity.HasCheckConstraint("CK_Usuario_Estado", "[Estado] IN (N'Activo', N'Inactivo', N'Suspendido')");
+            entity.HasCheckConstraint(
+                "CK_Usuario_Estado",
+                "[Estado] IN (N'Activo', N'Inactivo', N'Suspendido')");
         });
 
         modelBuilder.Entity<Credencial>(entity =>
         {
             entity.ToTable("Credencial");
             entity.HasKey(e => e.CredencialId);
+            
+            entity.Property(c => c.CredencialId)
+                .ValueGeneratedOnAdd()
+                .UseIdentityColumn(1,1);
 
             entity.Property(e => e.PasswordHash)
                 .IsRequired()
@@ -202,6 +244,11 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Negocio");
             entity.HasKey(e => e.NegocioId);
+            
+            entity.Property(e => e.NegocioId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
 
             entity.Property(e => e.NombreComercial)
                 .IsRequired()
@@ -243,6 +290,11 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("OfertaExcedente");
             entity.HasKey(e => e.OfertaId);
+            
+            entity.Property(e => e.OfertaId)
+                .UseIdentityColumn(1, 1)
+                .ValueGeneratedOnAdd()
+                .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
 
             entity.Property(e => e.Titulo)
                 .IsRequired()
