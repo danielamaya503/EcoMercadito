@@ -79,7 +79,7 @@ public class MunicipiosController : ControllerBase
     /// <param name="pageSize">Cantidad por página (default: 20, max: 100).</param>
     [ProducesResponseType(typeof(ApiResponse<PagedResponse<MunicipioResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PagedResponse<MunicipioResponse>>), StatusCodes.Status500InternalServerError)]
-    [HttpGet("departamento/{departamentoId}", Name = "GetMunicipiosByDepartamento")]
+    [HttpGet("departamento/{departamentoId}", Name = " ")]
     public async Task<ActionResult<ApiResponse<PagedResponse<MunicipioResponse>>>> GetByDepartamento(
         int departamentoId,
         [FromQuery] int pageNumber = 1,

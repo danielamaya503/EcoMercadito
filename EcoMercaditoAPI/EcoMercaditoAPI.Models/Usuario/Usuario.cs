@@ -1,6 +1,8 @@
 ﻿using EcoMercaditoAPI.Models.EcoMercadito;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace EcoMercaditoAPI.Models.Usuarios;
@@ -13,6 +15,8 @@ public class Usuario
     /// <summary>
     /// Identificador único del usuario.
     /// </summary>
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int UsuarioId { get; set; }
 
     /// <summary>
