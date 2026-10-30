@@ -34,6 +34,14 @@ namespace EcoMercaditoAPI.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20)
         {
+            if (usuarioLogueadoId <= 0)
+            {
+                return BadRequest(ApiResponse<bool>.CreateError(
+                    "Usuario no autenticado",
+                    new List<string> { "El header X-Usuario-Id es requerido" }
+                ));
+            }
+            
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 1;
             if (pageSize > 100) pageSize = 100;
