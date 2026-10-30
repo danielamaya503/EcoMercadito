@@ -22,10 +22,16 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
+//Catalogo
 builder.Services.AddScoped<IMunicipioService, MunicipioService>();
+
+//USUARIO
 builder.Services.AddScoped<IAuthentificacion, AuthentificacionService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+
+//Negocio
+builder.Services.AddScoped<INegocioService, NegocioService>();
+
 
 // ==================== CORS ====================
 builder.Services.AddCors(options =>
